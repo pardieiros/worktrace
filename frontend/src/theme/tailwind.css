@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-surface text-text font-sans antialiased;
+}
+
+a {
+  @apply text-primary underline-offset-4 hover:underline;
+}
+

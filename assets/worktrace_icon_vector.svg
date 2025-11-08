@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <title>Worktrace Icon (Vector)</title>
+  <defs>
+    <style>
+      .primary{ fill:#1E88E5; }
+      .stroke{ stroke:#1E88E5; stroke-width:16; stroke-linecap:round; stroke-linejoin:round; fill:none; }
+    </style>
+  </defs>
+
+  <!-- Barras (com cantos arredondados) -->
+  <rect class="primary" x="16"  y="164" width="28" height="60" rx="6" ry="6"/>
+  <rect class="primary" x="62"  y="132" width="28" height="92" rx="6" ry="6"/>
+  <rect class="primary" x="108" y="156" width="28" height="68" rx="6" ry="6"/>
+  <rect class="primary" x="154" y="116" width="28" height="108" rx="6" ry="6"/>
+
+  <!-- Relógio (anel + ponteiros) -->
+  <circle class="stroke" cx="186" cy="70" r="42"/>
+  <line class="stroke" x1="186" y1="70" x2="186" y2="48"/>
+  <line class="stroke" x1="186" y1="70" x2="204" y2="82"/>
+</svg>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ branding.title }}</title>
+    <style>
+        body {
+            font-family: "Inter", Arial, sans-serif;
+            color: #1A1D23;
+            background: #F4F6F8;
+            padding: 24px;
+        }
+        h1 {
+            color: #1E88E5;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 24px;
+        }
+        th {
+            background: #1E88E5;
+            color: #ffffff;
+            padding: 8px;
+            text-align: left;
+        }
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #90CAF9;
+        }
+        tfoot td {
+            font-weight: bold;
+            border-top: 2px solid #1E88E5;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ branding.title }}</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Client</th>
+                <th>Project</th>
+                <th>User</th>
+                <th>Total Minutes</th>
+                <th>Billable Minutes</th>
+                <th>Non-billable Minutes</th>
+                <th>Total Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in rows %}
+            <tr>
+                <td>{{ row.client }}</td>
+                <td>{{ row.project }}</td>
+                <td>{{ row.user }}</td>
+                <td>{{ row.total_minutes }}</td>
+                <td>{{ row.billable_minutes }}</td>
+                <td>{{ row.non_billable_minutes }}</td>
+                <td>{{ row.total_amount }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="7">No data available for the selected filters.</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+

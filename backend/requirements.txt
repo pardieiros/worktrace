@@ -1,0 +1,14 @@
+Faker>=20.0,<21.0
+Django>=4.2,<5.0
+django-cors-headers>=4.4,<5.0
+django-environ>=0.11,<0.12
+django-filter>=23.5,<24.0
+djangorestframework>=3.14,<3.15
+djangorestframework-simplejwt>=5.3,<5.4
+drf-spectacular>=0.27,<0.28
+gunicorn>=21.2,<22.0
+psycopg2-binary>=2.9,<3.0
+pillow>=10.0,<11.0
+weasyprint>=61.0,<62.0
+whitenoise>=6.6,<7.0
+
