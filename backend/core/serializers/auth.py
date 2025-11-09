@@ -45,3 +45,4 @@ class LoginSerializer(serializers.Serializer):
         attrs["refresh"] = str(refresh)
         return attrs
 
+

@@ -181,3 +181,4 @@ The auth flow is documented inline with serializers and views, and reporting end
 - The codebase follows WCAG AA contrast requirements, responsive layout, and keyboard-accessible controls.
 - Branding assets (logo, icon, social cover) are consumed directly from the shared `assets/` directory to avoid duplication.
 
+

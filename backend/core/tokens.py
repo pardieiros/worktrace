@@ -52,3 +52,4 @@ def clear_jwt_cookies(response: HttpResponse) -> None:
     response.delete_cookie(settings.JWT_COOKIE_ACCESS_KEY, path="/")
     response.delete_cookie(settings.JWT_COOKIE_REFRESH_KEY, path="/api/auth/")
 
+

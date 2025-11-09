@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime, time, timedelta
 
 from django.conf import settings
@@ -68,6 +69,10 @@ class Project(models.Model):
         INTERNAL = "internal", _("Internal")
         CLIENT = "client", _("Client visible")
 
+    class BillingType(models.TextChoices):
+        HOURLY = "hourly", _("Hourly")
+        PACK = "pack", _("Hours pack")
+
     name = models.CharField(max_length=255)
     client = models.ForeignKey(
         Client,
@@ -85,6 +90,33 @@ class Project(models.Model):
         choices=Visibility.choices,
         default=Visibility.INTERNAL,
     )
+    billing_type = models.CharField(
+        max_length=20,
+        choices=BillingType.choices,
+        default=BillingType.HOURLY,
+    )
+    pack_hours = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Number of hours included in the pack."),
+    )
+    pack_total_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Total amount agreed for the pack of hours."),
+    )
+    hourly_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Hourly rate applied either after the pack or when no pack is defined."),
+    )
+    currency = models.CharField(max_length=8, default="EUR")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         related_name="projects_created",
@@ -296,4 +328,112 @@ class TimeEntry(models.Model):
         ).exists()
         if overlap_exists:
             raise ValidationError(_("Time entry overlaps with an existing one."))
+
+
+class TimeEntryTimerQuerySet(models.QuerySet):
+    def active(self) -> "TimeEntryTimerQuerySet":
+        return self.filter(
+            status__in=(
+                TimeEntryTimer.Status.RUNNING,
+                TimeEntryTimer.Status.PAUSED,
+            )
+        )
+
+
+class TimeEntryTimer(models.Model):
+    class Status(models.TextChoices):
+        RUNNING = "running", _("Running")
+        PAUSED = "paused", _("Paused")
+
+    project = models.ForeignKey(
+        Project,
+        related_name="timers",
+        on_delete=models.CASCADE,
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="active_timers",
+        on_delete=models.CASCADE,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.RUNNING,
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    last_resumed_at = models.DateTimeField(null=True, blank=True)
+    accumulated_seconds = models.PositiveIntegerField(default=0)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = TimeEntryTimerQuerySet.as_manager()
+
+    class Meta:
+        ordering = ("-created_at",)
+        indexes = [
+            models.Index(fields=("status",)),
+            models.Index(fields=("project", "status")),
+            models.Index(fields=("user", "status")),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.project} - {self.user} ({self.status})"
+
+    @property
+    def elapsed_seconds(self) -> int:
+        total = self.accumulated_seconds
+        if (
+            self.status == self.Status.RUNNING
+            and self.last_resumed_at is not None
+        ):
+            delta = timezone.now() - self.last_resumed_at
+            total += max(int(delta.total_seconds()), 0)
+        return total
+
+    def pause(self) -> None:
+        if self.status != self.Status.RUNNING:
+            raise ValidationError(_("Only running timers can be paused."))
+        now = timezone.now()
+        delta = now - self.last_resumed_at
+        self.accumulated_seconds += max(int(delta.total_seconds()), 0)
+        self.last_resumed_at = None
+        self.status = self.Status.PAUSED
+        self.save(update_fields=("accumulated_seconds", "last_resumed_at", "status", "updated_at"))
+
+    def resume(self) -> None:
+        if self.status != self.Status.PAUSED:
+            raise ValidationError(_("Only paused timers can be resumed."))
+        self.last_resumed_at = timezone.now()
+        self.status = self.Status.RUNNING
+        self.save(update_fields=("last_resumed_at", "status", "updated_at"))
+
+    def complete(
+        self,
+        *,
+        summary: str,
+        task: str,
+        billable: bool = True,
+    ) -> TimeEntry:
+        now = timezone.now()
+        total_seconds = self.elapsed_seconds
+        if total_seconds <= 0:
+            total_seconds = 0
+        duration_minutes = max(1, math.ceil(total_seconds / 60))
+        start_local = timezone.localtime(self.started_at)
+        end_local = timezone.localtime(now)
+
+        time_entry = TimeEntry.objects.create(
+            project=self.project,
+            user=self.user,
+            date=start_local.date(),
+            start=start_local.time(),
+            end=end_local.time(),
+            duration_minutes=duration_minutes,
+            task=task,
+            notes=summary,
+            billable=billable,
+        )
+        self.delete()
+        return time_entry
 

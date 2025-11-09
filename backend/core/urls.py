@@ -11,6 +11,7 @@ router.register(r"projects", views.ProjectViewSet, basename="project")
 router.register(r"assignments", views.ProjectAssignmentViewSet, basename="assignment")
 router.register(r"hourly-rates", views.HourlyRateViewSet, basename="hourlyrate")
 router.register(r"time-entries", views.TimeEntryViewSet, basename="timeentry")
+router.register(r"time-entry-timers", views.TimeEntryTimerViewSet, basename="timeentrytimer")
 
 urlpatterns = [
     path("auth/login", views.LoginView.as_view(), name="auth-login"),

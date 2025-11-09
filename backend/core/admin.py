@@ -93,3 +93,4 @@ class TimeEntryAdmin(admin.ModelAdmin):
     search_fields = ("project__name", "user__username", "task", "notes")
     raw_id_fields = ("project", "user")
 
+

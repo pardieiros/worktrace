@@ -64,3 +64,4 @@ def test_reports_summary_returns_data(api_client, admin_user, project):
     assert report_response.status_code == 200
     assert report_response.data
 
+

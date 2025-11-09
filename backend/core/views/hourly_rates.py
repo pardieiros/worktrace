@@ -13,3 +13,4 @@ class HourlyRateViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, permissions.IsAdmin]
     filterset_fields = ("client", "project", "currency")
 
+

@@ -74,6 +74,11 @@ class ProjectSerializer(serializers.ModelSerializer):
             "description",
             "status",
             "visibility",
+            "billing_type",
+            "pack_hours",
+            "pack_total_value",
+            "hourly_rate",
+            "currency",
             "created_by",
             "created_by_name",
             "created_at",
@@ -91,10 +96,63 @@ class ProjectSerializer(serializers.ModelSerializer):
             "last_logged_at",
             "created_by_name",
             "client_name",
+            "created_by",
         )
 
     def get_total_logged_hours(self, obj: models.Project) -> float:
         return round(obj.total_logged_minutes / 60, 2)
+
+    def validate(self, attrs):
+        instance = getattr(self, "instance", None)
+        billing_type = attrs.get("billing_type")
+        if billing_type is None and instance is not None:
+            billing_type = instance.billing_type
+        currency = attrs.get("currency")
+        if currency is None and instance is not None:
+            currency = instance.currency
+
+        pack_hours = attrs.get("pack_hours", getattr(instance, "pack_hours", None))
+        pack_total_value = attrs.get(
+            "pack_total_value", getattr(instance, "pack_total_value", None)
+        )
+        hourly_rate = attrs.get("hourly_rate", getattr(instance, "hourly_rate", None))
+
+        errors = {}
+
+        if billing_type == models.Project.BillingType.PACK:
+            if pack_hours is None:
+                errors["pack_hours"] = "Pack hours are required for pack-based projects."
+            elif pack_hours <= 0:
+                errors["pack_hours"] = "Pack hours must be greater than zero."
+
+            if pack_total_value is None:
+                errors["pack_total_value"] = "Pack total value is required for pack-based projects."
+            elif pack_total_value <= 0:
+                errors["pack_total_value"] = "Pack total value must be greater than zero."
+
+            if hourly_rate is None:
+                errors["hourly_rate"] = "Hourly rate is required for overtime in pack-based projects."
+            elif hourly_rate <= 0:
+                errors["hourly_rate"] = "Hourly rate must be greater than zero."
+        else:
+            if billing_type != models.Project.BillingType.HOURLY:
+                errors["billing_type"] = "Invalid billing type."
+            if pack_hours not in (None, 0):
+                errors["pack_hours"] = "Pack hours should not be set for hourly projects."
+            if pack_total_value not in (None, 0):
+                errors["pack_total_value"] = "Pack total value should not be set for hourly projects."
+            if hourly_rate is None:
+                errors["hourly_rate"] = "Hourly rate is required."
+            elif hourly_rate <= 0:
+                errors["hourly_rate"] = "Hourly rate must be greater than zero."
+
+        if currency is None:
+            errors["currency"] = "Currency is required."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+
+        return attrs
 
     def create(self, validated_data):
         request = self.context["request"]

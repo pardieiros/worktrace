@@ -61,3 +61,4 @@ def test_project_metrics_update(project, admin_user):
     project.refresh_from_db()
     assert project.total_logged_minutes == 120
 
+

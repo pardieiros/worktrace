@@ -49,7 +49,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-surface px-4">
       <Card className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <img src={cover} alt="Worktrace" className="mx-auto h-12 w-auto" />
+          <img src={cover} alt="Worktrace" className="mx-auto h-32 w-auto md:h-20" />
           <h1 className="mt-4 text-2xl font-semibold text-text">Entrar na plataforma</h1>
           <p className="text-sm text-primary/80">Controle de horas e transparência num só painel.</p>
         </div>

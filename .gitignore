@@ -1,0 +1,41 @@
+# Environment variables
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyc
+*.pyd
+*.sqlite3
+.db.sqlite3
+
+# Virtual environments
+.venv/
+venv/
+
+# Node / Frontend
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Django static/media outputs
+backend/staticfiles/
+backend/media/
+
+# Coverage & test artifacts
+.coverage
+coverage/
+pytest_cache/
+backend/.pytest_cache/
+frontend/coverage/
+
+# IDE/editor
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Docker artifacts
+**/tmp/

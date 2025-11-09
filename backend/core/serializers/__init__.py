@@ -5,7 +5,11 @@ from .project import (
     ProjectAssignmentSerializer,
     ProjectSerializer,
 )
-from .timeentry import TimeEntrySerializer
+from .timeentry import (
+    TimeEntrySerializer,
+    TimeEntryTimerSerializer,
+    TimeEntryTimerStopSerializer,
+)
 from .reports import ReportSummarySerializer
 
 __all__ = [
@@ -16,6 +20,8 @@ __all__ = [
     "ProjectAssignmentSerializer",
     "HourlyRateSerializer",
     "TimeEntrySerializer",
+    "TimeEntryTimerSerializer",
+    "TimeEntryTimerStopSerializer",
     "ReportSummarySerializer",
 ]
 

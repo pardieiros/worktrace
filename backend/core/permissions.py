@@ -37,3 +37,4 @@ def user_is_assigned_to_project(user, project) -> bool:
         return True
     return project.assignments.filter(user=user, is_active=True).exists()
 
+

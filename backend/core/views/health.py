@@ -15,3 +15,4 @@ class HealthView(APIView):
             return Response({"status": "forbidden"}, status=403)
         return Response({"status": "ok"})
 
+

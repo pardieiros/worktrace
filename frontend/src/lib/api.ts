@@ -1,4 +1,6 @@
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, type AxiosRequestConfig } from "axios";
+
+const SESSION_FLAG_KEY = "worktrace.authenticated";
 
 export interface User {
   id: number;
@@ -34,19 +36,55 @@ export const setCsrfToken = (token: string | null) => {
   }
 };
 
+type AxiosRequestConfigWithRetry = AxiosRequestConfig & { _retry?: boolean };
+
+const redirectToLogin = () => {
+  setCsrfToken(null);
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(SESSION_FLAG_KEY);
+    if (window.location.pathname !== "/login") {
+      window.location.replace("/login");
+    }
+  }
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      try {
-        await api.post("/auth/refresh");
-        if (error.config) {
-          return api.request(error.config);
-        }
-      } catch (refreshError) {
-        return Promise.reject(refreshError);
+    const { response, config } = error;
+    const originalRequest = config as AxiosRequestConfigWithRetry | undefined;
+
+    if (response?.status === 401) {
+      const requestUrl = originalRequest?.url ?? "";
+
+      // If refresh token request failed or we are not on a protected page, redirect to login
+      if (requestUrl.includes("/auth/refresh")) {
+        redirectToLogin();
+        return Promise.reject(error);
       }
+
+      // Avoid trying to refresh for login attempts
+      if (requestUrl.includes("/auth/login")) {
+        return Promise.reject(error);
+      }
+
+      if (!originalRequest?._retry) {
+        originalRequest._retry = true;
+        try {
+          const refreshResponse = await api.post<AuthResponse>("/auth/refresh");
+          if (refreshResponse.data?.csrfToken) {
+            setCsrfToken(refreshResponse.data.csrfToken);
+          }
+          return api.request(originalRequest);
+        } catch (refreshError) {
+          redirectToLogin();
+          return Promise.reject(refreshError);
+        }
+      }
+
+      redirectToLogin();
     }
+
     return Promise.reject(error);
   }
 );

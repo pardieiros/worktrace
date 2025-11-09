@@ -30,3 +30,4 @@ class Command(BaseCommand):
         user.save(update_fields=["role"])
         self.stdout.write(self.style.SUCCESS(f"Superuser {email} created."))
 
+

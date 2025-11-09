@@ -31,11 +31,32 @@ export interface Project {
   visibility: ProjectVisibility;
   created_by: number;
   created_by_name: string;
+  billing_type: "hourly" | "pack";
+  pack_hours: string | null;
+  pack_total_value: string | null;
+  hourly_rate: string | null;
+  currency: string;
   created_at: string;
   updated_at: string;
   total_logged_minutes: number;
   total_logged_hours: number;
   last_logged_at: string | null;
+}
+
+export interface TimeEntryTimer {
+  id: number;
+  project: number;
+  project_name: string;
+  user: number;
+  user_email: string;
+  status: "running" | "paused";
+  started_at: string;
+  last_resumed_at: string | null;
+  accumulated_seconds: number;
+  elapsed_seconds: number;
+  notes: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface TimeEntry {

@@ -58,3 +58,4 @@ class ReportExportPdfView(ReportBaseView):
         rows = reporting.summarize(request.user, filters)
         return reporting.export_pdf(rows)
 
+

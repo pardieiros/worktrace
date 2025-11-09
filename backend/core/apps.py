@@ -9,3 +9,4 @@ class CoreConfig(AppConfig):
     def ready(self) -> None:
         from . import signals  # noqa: F401
 
+

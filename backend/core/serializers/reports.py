@@ -12,3 +12,4 @@ class ReportSummarySerializer(serializers.Serializer):
     non_billable_minutes = serializers.IntegerField()
     total_amount = serializers.DecimalField(max_digits=12, decimal_places=2, allow_null=True)
 
+
