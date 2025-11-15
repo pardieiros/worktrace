@@ -2,18 +2,14 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
+import { useTranslation } from "react-i18next";
 
+import { TimeEntriesTable } from "@/components/pages/timeEntries/TimeEntriesTable";
+import { TimeEntryDetailDialog } from "@/components/pages/timeEntries/TimeEntryDetailDialog";
+import { formatDuration, getElapsedSeconds } from "@/components/pages/timeEntries/utils";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
 import {
   createTimer,
   fetchProjects,
@@ -26,25 +22,6 @@ import {
 import type { CreateTimerPayload, StopTimerPayload } from "@/lib/queries";
 import api from "@/lib/api";
 import type { Project, TimeEntry, TimeEntryTimer } from "@/lib/types";
-
-const formatDuration = (totalSeconds: number) => {
-  const seconds = Math.max(totalSeconds, 0);
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = seconds % 60;
-  const pad = (value: number) => value.toString().padStart(2, "0");
-  return `${pad(hours)}:${pad(minutes)}:${pad(remainingSeconds)}`;
-};
-
-const getElapsedSeconds = (timer: TimeEntryTimer, reference: number) => {
-  let elapsedSeconds = timer.accumulated_seconds;
-  if (timer.status === "running" && timer.last_resumed_at) {
-    const resumedAt = new Date(timer.last_resumed_at).getTime();
-    const difference = Math.floor((reference - resumedAt) / 1000);
-    elapsedSeconds += Math.max(difference, 0);
-  }
-  return elapsedSeconds;
-};
 
 type ActiveTimer = TimeEntryTimer & { elapsedSeconds: number };
 
@@ -66,6 +43,7 @@ const parseErrorMessage = (error: unknown, fallback: string) => {
 
 export function AdminTimeEntriesPage() {
   const queryClient = useQueryClient();
+  const { t, i18n } = useTranslation();
   const [filters, setFilters] = useState({
     project: "",
     from: "",
@@ -85,7 +63,22 @@ export function AdminTimeEntriesPage() {
     billable: true
   });
   const [stopError, setStopError] = useState<string | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [tick, setTick] = useState(() => Date.now());
+
+  const locale = useMemo(() => {
+    const language = i18n.language.split("-")[0];
+    switch (language) {
+      case "pt":
+        return "pt-PT";
+      case "es":
+        return "es-ES";
+      case "fr":
+        return "fr-FR";
+      default:
+        return "en-US";
+    }
+  }, [i18n.language]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setTick(Date.now()), 1000);
@@ -136,7 +129,7 @@ export function AdminTimeEntriesPage() {
       void queryClient.invalidateQueries({ queryKey: ["time-entry-timers"] });
     },
     onError: (error) => {
-      setStartError(parseErrorMessage(error, "Não foi possível iniciar o temporizador."));
+      setStartError(parseErrorMessage(error, t("admin.timeEntries.errors.start")));
     }
   });
 
@@ -147,7 +140,7 @@ export function AdminTimeEntriesPage() {
       void queryClient.invalidateQueries({ queryKey: ["time-entry-timers"] });
     },
     onError: (error) => {
-      setTimerActionError(parseErrorMessage(error, "Não foi possível colocar em pausa."));
+      setTimerActionError(parseErrorMessage(error, t("admin.timeEntries.errors.pause")));
     }
   });
 
@@ -158,7 +151,7 @@ export function AdminTimeEntriesPage() {
       void queryClient.invalidateQueries({ queryKey: ["time-entry-timers"] });
     },
     onError: (error) => {
-      setTimerActionError(parseErrorMessage(error, "Não foi possível retomar o temporizador."));
+      setTimerActionError(parseErrorMessage(error, t("admin.timeEntries.errors.resume")));
     }
   });
 
@@ -175,7 +168,7 @@ export function AdminTimeEntriesPage() {
       ]);
     },
     onError: (error) => {
-      setStopError(parseErrorMessage(error, "Não foi possível terminar o temporizador."));
+      setStopError(parseErrorMessage(error, t("admin.timeEntries.errors.stop")));
     }
   });
 
@@ -204,7 +197,7 @@ export function AdminTimeEntriesPage() {
   const handleStartTimerSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!startForm.projectId) {
-      setStartError("Seleciona um projeto antes de iniciar.");
+      setStartError(t("admin.timeEntries.validations.projectRequired"));
       return;
     }
     const payload: CreateTimerPayload = {
@@ -219,7 +212,7 @@ export function AdminTimeEntriesPage() {
   const handleStopSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!stopForm.summary.trim()) {
-      setStopError("Explica as alterações feitas para o cliente perceber o trabalho.");
+      setStopError(t("admin.timeEntries.validations.summaryRequired"));
       return;
     }
     if (!stopModalTimer) {
@@ -264,21 +257,18 @@ export function AdminTimeEntriesPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-text">Registo de horas</h1>
-          <p className="text-sm text-primary/70">
-            Monitorize entradas de tempo, inicie contadores e exporte dados para partilhar com o
-            cliente.
-          </p>
+          <h1 className="text-2xl font-semibold text-text">{t("admin.timeEntries.title")}</h1>
+          <p className="text-sm text-primary/70">{t("admin.timeEntries.subtitle")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={() => handleExport("csv")}>
-            Exportar CSV
+            {t("admin.timeEntries.actions.exportCsv")}
           </Button>
           <Button type="button" variant="outline" onClick={() => handleExport("pdf")}>
-            Exportar PDF
+            {t("admin.timeEntries.actions.exportPdf")}
           </Button>
           <Button type="button" onClick={() => setIsStartModalOpen(true)}>
-            Iniciar contador
+            {t("admin.timeEntries.actions.startTimer")}
           </Button>
         </div>
       </div>
@@ -287,7 +277,7 @@ export function AdminTimeEntriesPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <div>
             <label className="text-sm font-medium text-text" htmlFor="project-select">
-              Projeto
+              {t("admin.timeEntries.filters.projectLabel")}
             </label>
             <select
               id="project-select"
@@ -295,7 +285,7 @@ export function AdminTimeEntriesPage() {
               value={filters.project}
               onChange={(event) => setFilters((prev) => ({ ...prev, project: event.target.value }))}
             >
-              <option value="">Todos</option>
+              <option value="">{t("admin.timeEntries.filters.projectAll")}</option>
               {projects.map((project: Project) => (
                 <option key={project.id} value={project.id}>
                   {project.name}
@@ -305,7 +295,7 @@ export function AdminTimeEntriesPage() {
           </div>
           <div>
             <label className="text-sm font-medium text-text" htmlFor="from">
-              Desde
+              {t("admin.timeEntries.filters.fromLabel")}
             </label>
             <Input
               id="from"
@@ -316,7 +306,7 @@ export function AdminTimeEntriesPage() {
           </div>
           <div>
             <label className="text-sm font-medium text-text" htmlFor="to">
-              Até
+              {t("admin.timeEntries.filters.toLabel")}
             </label>
             <Input
               id="to"
@@ -331,13 +321,11 @@ export function AdminTimeEntriesPage() {
       <Card>
         <div className="mb-4 flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold text-text">Temporizadores ativos</h2>
-            <p className="text-sm text-primary/70">
-              Controla o progresso em tempo real e pausa ou termina quando necessário.
-            </p>
+            <h2 className="text-lg font-semibold text-text">{t("admin.timeEntries.activeTimers.title")}</h2>
+            <p className="text-sm text-primary/70">{t("admin.timeEntries.activeTimers.description")}</p>
           </div>
           <Button variant="outline" size="sm" type="button" onClick={() => void refetchTimers()}>
-            Atualizar
+            {t("admin.timeEntries.actions.refresh")}
           </Button>
         </div>
         {timerActionError && (
@@ -346,9 +334,9 @@ export function AdminTimeEntriesPage() {
           </div>
         )}
         {isLoadingTimers ? (
-          <p className="text-sm text-primary/70">A carregar temporizadores...</p>
+          <p className="text-sm text-primary/70">{t("admin.timeEntries.activeTimers.loading")}</p>
         ) : activeTimers.length === 0 ? (
-          <p className="text-sm text-primary/70">Não existem temporizadores ativos.</p>
+          <p className="text-sm text-primary/70">{t("admin.timeEntries.activeTimers.empty")}</p>
         ) : (
           <div className="space-y-3">
             {activeTimers.map((timer) => (
@@ -360,14 +348,23 @@ export function AdminTimeEntriesPage() {
                   <p className="text-base font-semibold text-text">{timer.project_name}</p>
                   <p className="text-xs text-primary/70">{timer.user_email}</p>
                   <p className="text-xs text-primary/60">
-                    Iniciado em {new Date(timer.started_at).toLocaleString()}
+                    {t("admin.timeEntries.activeTimers.startedAt", {
+                      datetime: new Date(timer.started_at).toLocaleString(locale)
+                    })}
                   </p>
                 </div>
                 <div className="text-center md:text-left">
-                  <p className="text-xs uppercase tracking-wide text-primary/60">Tempo decorrido</p>
+                  <p className="text-xs uppercase tracking-wide text-primary/60">
+                    {t("admin.timeEntries.activeTimers.elapsedLabel")}
+                  </p>
                   <p className="text-xl font-semibold text-text">{formatDuration(timer.elapsedSeconds)}</p>
                   <p className="text-xs text-primary/70">
-                    Estado: {timer.status === "running" ? "A contar" : "Em pausa"}
+                    {t("admin.timeEntries.activeTimers.statusLabel", {
+                      status:
+                        timer.status === "running"
+                          ? t("admin.timeEntries.activeTimers.statuses.running")
+                          : t("admin.timeEntries.activeTimers.statuses.paused")
+                    })}
                   </p>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
@@ -379,7 +376,7 @@ export function AdminTimeEntriesPage() {
                       onClick={() => handlePause(timer)}
                       disabled={pauseTimerMutation.isPending && pauseTimerMutation.variables === timer.id}
                     >
-                      Pausar
+                      {t("admin.timeEntries.actions.pause")}
                     </Button>
                   ) : (
                     <Button
@@ -391,7 +388,7 @@ export function AdminTimeEntriesPage() {
                         resumeTimerMutation.isPending && resumeTimerMutation.variables === timer.id
                       }
                     >
-                      Retomar
+                      {t("admin.timeEntries.actions.resume")}
                     </Button>
                   )}
                   <Button
@@ -400,7 +397,7 @@ export function AdminTimeEntriesPage() {
                     size="sm"
                     onClick={() => openStopModal(timer)}
                   >
-                    Stop
+                    {t("admin.timeEntries.actions.stop")}
                   </Button>
                 </div>
               </div>
@@ -410,52 +407,28 @@ export function AdminTimeEntriesPage() {
       </Card>
 
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Data</TableHead>
-              <TableHead>Projeto</TableHead>
-              <TableHead>Utilizador</TableHead>
-              <TableHead>Task</TableHead>
-              <TableHead>Duração</TableHead>
-              <TableHead>Billable</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoadingEntries && (
-              <TableRow>
-                <TableCell colSpan={6}>A carregar...</TableCell>
-              </TableRow>
-            )}
-            {!isLoadingEntries &&
-              entries.map((entry: TimeEntry) => (
-                <TableRow key={entry.id}>
-                  <TableCell>{entry.date}</TableCell>
-                  <TableCell>{entry.project_name}</TableCell>
-                  <TableCell>{entry.user_email}</TableCell>
-                  <TableCell>{entry.task}</TableCell>
-                  <TableCell>{(entry.duration_minutes / 60).toFixed(2)}h</TableCell>
-                  <TableCell>{entry.billable ? "Sim" : "Não"}</TableCell>
-                </TableRow>
-              ))}
-            {!isLoadingEntries && entries.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6}>Sem registos neste período.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+        <TimeEntriesTable
+          entries={entries}
+          isLoading={isLoadingEntries}
+          locale={locale}
+          onSelectEntry={setSelectedEntry}
+        />
       </Card>
+      <TimeEntryDetailDialog
+        entry={selectedEntry}
+        isOpen={selectedEntry !== null}
+        locale={locale}
+        onClose={() => setSelectedEntry(null)}
+      />
+
 
       {isStartModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-8">
           <Card className="w-full max-w-xl p-6 shadow-xl">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold text-text">Iniciar temporizador</h2>
-                <p className="text-sm text-primary/70">
-                  Escolhe o projeto e (opcionalmente) deixa notas sobre o que vais trabalhar.
-                </p>
+                <h2 className="text-xl font-semibold text-text">{t("admin.timeEntries.startModal.title")}</h2>
+                <p className="text-sm text-primary/70">{t("admin.timeEntries.startModal.description")}</p>
               </div>
               <Button
                 type="button"
@@ -467,7 +440,7 @@ export function AdminTimeEntriesPage() {
                 }}
                 disabled={createTimerMutation.isPending}
               >
-                Fechar
+                {t("common.actions.close")}
               </Button>
             </div>
 
@@ -480,18 +453,18 @@ export function AdminTimeEntriesPage() {
             <form className="space-y-4" onSubmit={handleStartTimerSubmit}>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-text" htmlFor="start-project">
-                  Projeto
+                  {t("admin.timeEntries.startModal.projectLabel")}
                 </label>
                 <select
                   id="start-project"
                   className="w-full rounded-lg border border-primary/25 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   value={startForm.projectId}
-                  onChange={(event) =>
+                  onChange={(event: ChangeEvent<HTMLSelectElement>) =>
                     setStartForm((prev) => ({ ...prev, projectId: event.target.value }))
                   }
                   disabled={isLoadingProjects || createTimerMutation.isPending}
                 >
-                  <option value="">Seleciona um projeto</option>
+                  <option value="">{t("admin.timeEntries.startModal.projectPlaceholder")}</option>
                   {projects.map((project) => (
                     <option key={project.id} value={project.id}>
                       {project.name}
@@ -502,7 +475,7 @@ export function AdminTimeEntriesPage() {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-text" htmlFor="start-notes">
-                  Notas iniciais (opcional)
+                  {t("admin.timeEntries.startModal.notesLabel")}
                 </label>
                 <textarea
                   id="start-notes"
@@ -511,7 +484,7 @@ export function AdminTimeEntriesPage() {
                   onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                     setStartForm((prev) => ({ ...prev, notes: event.target.value }))
                   }
-                  placeholder="O que vais abordar neste sprint?"
+                  placeholder={t("admin.timeEntries.startModal.notesPlaceholder")}
                 />
               </div>
 
@@ -526,10 +499,12 @@ export function AdminTimeEntriesPage() {
                   }}
                   disabled={createTimerMutation.isPending}
                 >
-                  Cancelar
+                  {t("common.actions.cancel")}
                 </Button>
                 <Button type="submit" disabled={createTimerMutation.isPending || isTimersMutationPending}>
-                  {createTimerMutation.isPending ? "A iniciar..." : "Começar"}
+                  {createTimerMutation.isPending
+                    ? t("admin.timeEntries.startModal.submitting")
+                    : t("admin.timeEntries.startModal.submit")}
                 </Button>
               </div>
             </form>
@@ -542,10 +517,8 @@ export function AdminTimeEntriesPage() {
           <Card className="w-full max-w-2xl p-6 shadow-xl">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-semibold text-text">Finalizar temporizador</h2>
-                <p className="text-sm text-primary/70">
-                  Resume o trabalho realizado para que o cliente perceba o valor entregue.
-                </p>
+                <h2 className="text-xl font-semibold text-text">{t("admin.timeEntries.stopModal.title")}</h2>
+                <p className="text-sm text-primary/70">{t("admin.timeEntries.stopModal.description")}</p>
               </div>
               <Button
                 type="button"
@@ -553,7 +526,7 @@ export function AdminTimeEntriesPage() {
                 onClick={() => setStopModalTimer(null)}
                 disabled={stopTimerMutation.isPending}
               >
-                Fechar
+                {t("common.actions.close")}
               </Button>
             </div>
 
@@ -567,13 +540,15 @@ export function AdminTimeEntriesPage() {
               <div>
                 <p className="text-sm font-medium text-text">{stopModalTimer.project_name}</p>
                 <p className="text-xs text-primary/70">
-                  Tempo total: {formatDuration(getElapsedSeconds(stopModalTimer, tick))}
+                  {t("admin.timeEntries.stopModal.totalTime", {
+                    duration: formatDuration(getElapsedSeconds(stopModalTimer, tick))
+                  })}
                 </p>
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-text" htmlFor="stop-summary">
-                  O que foi feito?
+                  {t("admin.timeEntries.stopModal.summaryLabel")}
                 </label>
                 <textarea
                   id="stop-summary"
@@ -582,13 +557,13 @@ export function AdminTimeEntriesPage() {
                   onChange={(event: ChangeEvent<HTMLTextAreaElement>) =>
                     setStopForm((prev) => ({ ...prev, summary: event.target.value }))
                   }
-                  placeholder="Detalha as tarefas concluídas, decisões tomadas ou bloqueios encontrados."
+                  placeholder={t("admin.timeEntries.stopModal.summaryPlaceholder")}
                 />
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-text" htmlFor="stop-task">
-                  Título da tarefa (opcional)
+                  {t("admin.timeEntries.stopModal.taskLabel")}
                 </label>
                 <Input
                   id="stop-task"
@@ -596,7 +571,7 @@ export function AdminTimeEntriesPage() {
                   onChange={(event) =>
                     setStopForm((prev) => ({ ...prev, task: event.target.value }))
                   }
-                  placeholder="Ex. Sprint de UX KoalaClub"
+                  placeholder={t("admin.timeEntries.stopModal.taskPlaceholder")}
                 />
               </div>
 
@@ -608,7 +583,7 @@ export function AdminTimeEntriesPage() {
                     setStopForm((prev) => ({ ...prev, billable: event.target.checked }))
                   }
                 />
-                Marcar como faturável
+                {t("admin.timeEntries.stopModal.billableToggle")}
               </label>
 
               <div className="flex items-center justify-end gap-3">
@@ -618,10 +593,12 @@ export function AdminTimeEntriesPage() {
                   onClick={() => setStopModalTimer(null)}
                   disabled={stopTimerMutation.isPending}
                 >
-                  Cancelar
+                  {t("common.actions.cancel")}
                 </Button>
                 <Button type="submit" disabled={stopTimerMutation.isPending}>
-                  {stopTimerMutation.isPending ? "A registar..." : "Guardar registo"}
+                  {stopTimerMutation.isPending
+                    ? t("admin.timeEntries.stopModal.submitting")
+                    : t("admin.timeEntries.stopModal.submit")}
                 </Button>
               </div>
             </form>

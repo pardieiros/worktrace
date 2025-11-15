@@ -94,3 +94,52 @@ class TimeEntryAdmin(admin.ModelAdmin):
     raw_id_fields = ("project", "user")
 
 
+@admin.register(models.SystemSettings)
+class SystemSettingsAdmin(admin.ModelAdmin):
+    fieldsets = (
+        (
+            _("Company"),
+            {
+                "fields": (
+                    "company_name",
+                    "company_legal_name",
+                    "company_email",
+                    "company_phone",
+                    "company_website",
+                    "company_vat",
+                    "company_address",
+                    "branding_logo",
+                )
+            },
+        ),
+        (
+            _("Support & billing"),
+            {"fields": ("support_email", "billing_email")},
+        ),
+        (
+            _("Email defaults"),
+            {
+                "fields": (
+                    "default_sender_name",
+                    "default_sender_email",
+                    "reply_to_email",
+                )
+            },
+        ),
+        (
+            _("SMTP"),
+            {
+                "fields": (
+                    "smtp_host",
+                    "smtp_port",
+                    "smtp_username",
+                    "smtp_password",
+                    "smtp_use_tls",
+                    "smtp_use_ssl",
+                )
+            },
+        ),
+        (_("Metadata"), {"fields": ("created_at", "updated_at")}),
+    )
+    readonly_fields = ("created_at", "updated_at")
+

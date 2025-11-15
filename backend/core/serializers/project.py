@@ -159,3 +159,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         validated_data["created_by"] = request.user
         return super().create(validated_data)
 
+
+class ProjectStatusUpdateSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=models.Project.Status.choices)
+

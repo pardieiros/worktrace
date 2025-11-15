@@ -103,3 +103,90 @@ class ClientSerializer(serializers.ModelSerializer):
                 user.save(update_fields=["email", "username"])
         return client
 
+
+class ClientAccountEntrySerializer(serializers.ModelSerializer):
+    recorded_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.ClientAccountEntry
+        fields = (
+            "id",
+            "entry_type",
+            "amount",
+            "currency",
+            "occurred_at",
+            "reference",
+            "description",
+            "payment_method",
+            "notes",
+            "recorded_by",
+            "recorded_by_name",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "recorded_by", "recorded_by_name", "created_at", "updated_at")
+
+    def get_recorded_by_name(self, obj: models.ClientAccountEntry) -> str | None:
+        if obj.recorded_by:
+            full_name = obj.recorded_by.get_full_name().strip()
+            if full_name:
+                return full_name
+            if obj.recorded_by.email:
+                return obj.recorded_by.email
+            return obj.recorded_by.username
+        return None
+
+
+class ClientAccountSummarySerializer(serializers.Serializer):
+    client = ClientSerializer(read_only=True)
+    balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    total_charged = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    total_paid = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    currency = serializers.CharField(read_only=True)
+    entries = ClientAccountEntrySerializer(many=True, read_only=True)
+    pack_total_due = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    pack_projects = serializers.SerializerMethodField()
+    hourly_total_due = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    hourly_projects = serializers.SerializerMethodField()
+
+    def get_pack_projects(self, obj) -> list[dict]:
+        return obj.get("pack_projects", [])
+
+    def get_hourly_projects(self, obj) -> list[dict]:
+        return obj.get("hourly_projects", [])
+
+
+class ClientPaymentCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.ClientAccountEntry
+        fields = (
+            "amount",
+            "currency",
+            "occurred_at",
+            "reference",
+            "description",
+            "payment_method",
+            "notes",
+        )
+        extra_kwargs = {
+            "currency": {"required": False},
+            "occurred_at": {"required": False},
+        }
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be greater than zero.")
+        return value
+
+    def create(self, validated_data: dict) -> models.ClientAccountEntry:
+        client: models.Client = self.context["client"]
+        recorded_by = self.context.get("recorded_by")
+        if recorded_by is None and "request" in self.context:
+            recorded_by = getattr(self.context["request"], "user", None)
+        return models.ClientAccountEntry.objects.create(
+            client=client,
+            entry_type=models.ClientAccountEntry.EntryType.PAYMENT,
+            recorded_by=recorded_by,
+            **validated_data,
+        )
+

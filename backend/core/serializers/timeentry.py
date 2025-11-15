@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from decimal import Decimal
+from typing import Optional
+
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
@@ -8,7 +11,13 @@ from .. import models, permissions
 
 class TimeEntrySerializer(serializers.ModelSerializer):
     project_name = serializers.CharField(source="project.name", read_only=True)
+    client_name = serializers.CharField(
+        source="project.client.name", read_only=True, allow_null=True
+    )
     user_email = serializers.EmailField(source="user.email", read_only=True)
+    hourly_rate = serializers.SerializerMethodField()
+    amount = serializers.SerializerMethodField()
+    currency = serializers.SerializerMethodField()
 
     class Meta:
         model = models.TimeEntry
@@ -16,6 +25,7 @@ class TimeEntrySerializer(serializers.ModelSerializer):
             "id",
             "project",
             "project_name",
+            "client_name",
             "user",
             "user_email",
             "date",
@@ -27,8 +37,21 @@ class TimeEntrySerializer(serializers.ModelSerializer):
             "billable",
             "created_at",
             "updated_at",
+            "hourly_rate",
+            "amount",
+            "currency",
         )
-        read_only_fields = ("id", "created_at", "updated_at", "project_name", "user_email")
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+            "project_name",
+            "client_name",
+            "user_email",
+            "hourly_rate",
+            "amount",
+            "currency",
+        )
 
     def validate(self, attrs):
         request = self.context["request"]
@@ -54,6 +77,53 @@ class TimeEntrySerializer(serializers.ModelSerializer):
                 {"project": _("You are not assigned to this project.")}
             )
         return attrs
+
+    def _resolve_rate(self, entry: models.TimeEntry) -> Optional[tuple[Decimal, str]]:
+        if entry.project.billing_type != models.Project.BillingType.HOURLY:
+            return None
+
+        date = entry.date
+
+        project_rates = entry.project.hourly_rates.all()
+        client_rates = entry.project.client.hourly_rates.all() if entry.project.client else []
+
+        for rate in project_rates:
+            if rate.effective_from <= date and (not rate.effective_to or rate.effective_to >= date):
+                return rate.amount_decimal, rate.currency
+
+        for rate in client_rates:
+            if rate.effective_from <= date and (not rate.effective_to or rate.effective_to >= date):
+                return rate.amount_decimal, rate.currency
+
+        if entry.project.hourly_rate is not None:
+            amount = Decimal(entry.project.hourly_rate)
+            return amount, entry.project.currency
+
+        return None
+
+    def get_hourly_rate(self, entry: models.TimeEntry) -> Optional[str]:
+        result = self._resolve_rate(entry)
+        if result is None:
+            return None
+        amount, _ = result
+        return f"{amount.quantize(Decimal('0.01'))}"
+
+    def get_currency(self, entry: models.TimeEntry) -> Optional[str]:
+        result = self._resolve_rate(entry)
+        if result is None:
+            if entry.project.billing_type == models.Project.BillingType.HOURLY:
+                return entry.project.currency
+            return None
+        _, currency = result
+        return currency
+
+    def get_amount(self, entry: models.TimeEntry) -> Optional[str]:
+        result = self._resolve_rate(entry)
+        if result is None or not entry.billable:
+            return None
+        amount, _ = result
+        value = (Decimal(entry.duration_minutes) / Decimal(60)) * amount
+        return f"{value.quantize(Decimal('0.01'))}"
 
 
 class TimeEntryTimerSerializer(serializers.ModelSerializer):

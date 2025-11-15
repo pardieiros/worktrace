@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
@@ -25,16 +26,27 @@ class TimeEntryViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = (
             models.TimeEntry.objects.select_related("project", "project__client", "user")
-            .prefetch_related("project__assignments")
+            .prefetch_related(
+                "project__assignments",
+                Prefetch(
+                    "project__hourly_rates",
+                    queryset=models.HourlyRate.objects.order_by("-effective_from"),
+                ),
+                Prefetch(
+                    "project__client__hourly_rates",
+                    queryset=models.HourlyRate.objects.order_by("-effective_from"),
+                ),
+            )
             .all()
         )
         user = self.request.user
         if user.is_admin:
-            return queryset
-        return queryset.filter(
-            project__client=user.client,
-            project__visibility=models.Project.Visibility.CLIENT,
-        ).filter(project__assignments__user=user, project__assignments__is_active=True)
+            filtered = queryset
+        else:
+            filtered = queryset.filter(project__client=user.client)
+
+        project_filter = self.request.query_params.get("project")
+        return filtered
 
     def get_permissions(self):
         if self.action in ["list", "retrieve"]:

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { NavLink } from "react-router-dom";
 import {
   BarChart3,
@@ -8,6 +9,7 @@ import {
   Settings,
   Users
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import icon from "@assets/worktrace_icon_vector.svg";
 import { cn } from "@/lib/utils";
@@ -19,22 +21,29 @@ interface SidebarProps {
 
 export function Sidebar({ open }: SidebarProps) {
   const { user } = useAuthStore();
+  const { t } = useTranslation();
 
-  const adminLinks = [
-    { to: "/admin/dashboard", label: "Dashboard", icon: LayoutGrid },
-    { to: "/admin/clients", label: "Clientes", icon: Users },
-    { to: "/admin/projects", label: "Projetos", icon: Briefcase },
-    { to: "/admin/assignments", label: "Atribuições", icon: ClipboardList },
-    { to: "/admin/time-entries", label: "Horas", icon: FileSpreadsheet },
-    { to: "/admin/reports", label: "Relatórios", icon: BarChart3 },
-    { to: "/admin/settings", label: "Definições", icon: Settings }
-  ];
+  const adminLinks = useMemo(
+    () => [
+      { to: "/admin/dashboard", label: t("sidebar.links.dashboard"), icon: LayoutGrid },
+      { to: "/admin/clients", label: t("sidebar.links.clients"), icon: Users },
+      { to: "/admin/projects", label: t("sidebar.links.projects"), icon: Briefcase },
+      { to: "/admin/assignments", label: t("sidebar.links.assignments"), icon: ClipboardList },
+      { to: "/admin/time-entries", label: t("sidebar.links.timeEntries"), icon: FileSpreadsheet },
+      { to: "/admin/reports", label: t("sidebar.links.reports"), icon: BarChart3 },
+      { to: "/admin/settings", label: t("sidebar.links.settings"), icon: Settings }
+    ],
+    [t]
+  );
 
-  const clientLinks = [
-    { to: "/client/dashboard", label: "Dashboard", icon: LayoutGrid },
-    { to: "/client/projects", label: "Projetos", icon: Briefcase },
-    { to: "/client/reports", label: "Relatórios", icon: BarChart3 }
-  ];
+  const clientLinks = useMemo(
+    () => [
+      { to: "/client/dashboard", label: t("sidebar.links.dashboard"), icon: LayoutGrid },
+      { to: "/client/projects", label: t("sidebar.links.projects"), icon: Briefcase },
+      { to: "/client/reports", label: t("sidebar.links.reports"), icon: BarChart3 }
+    ],
+    [t]
+  );
 
   const links = user?.role === "ADMIN" ? adminLinks : clientLinks;
 
@@ -46,10 +55,10 @@ export function Sidebar({ open }: SidebarProps) {
       )}
     >
       <div className="mb-8 flex items-center gap-3">
-        <img src={icon} alt="Worktrace icon" className="h-10 w-10" />
+        <img src={icon} alt={t("sidebar.iconAlt")} className="h-10 w-10" />
         <div>
-          <p className="text-lg font-semibold text-text">Worktrace</p>
-          <p className="text-xs text-primary/70">Tempo e transparência</p>
+          <p className="text-lg font-semibold text-text">{t("common.appName")}</p>
+          <p className="text-xs text-primary/70">{t("sidebar.tagline")}</p>
         </div>
       </div>
       <nav className="flex flex-1 flex-col gap-2">
@@ -75,8 +84,10 @@ export function Sidebar({ open }: SidebarProps) {
         })}
       </nav>
       <div className="mt-8 rounded-lg border border-primary/10 bg-primary-weak/30 p-3 text-xs text-text/80">
-        <p><strong>Suporte:</strong> support@worktrace.app</p>
-        <p>Actualizado para WCAG AA e cookies HttpOnly.</p>
+        <p>
+          <strong>{t("sidebar.supportLabel")}</strong> {t("sidebar.supportEmail")}
+        </p>
+        <p>{t("sidebar.accessibilityNote")}</p>
       </div>
     </aside>
   );

@@ -8,6 +8,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { useTranslation } from "react-i18next";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { fetchReportSummary } from "@/lib/queries";
 
 export function AdminReportsPage() {
   const [billableFilter, setBillableFilter] = useState<"all" | "billable" | "non-billable">("all");
+  const { t, i18n } = useTranslation();
 
   const { data, isLoading } = useQuery({
     queryKey: ["reports", billableFilter],
@@ -29,6 +31,20 @@ export function AdminReportsPage() {
 
   const rows = data ?? [];
 
+  const locale = useMemo(() => {
+    const language = i18n.language.split("-")[0];
+    switch (language) {
+      case "pt":
+        return "pt-PT";
+      case "es":
+        return "es-ES";
+      case "fr":
+        return "fr-FR";
+      default:
+        return "en-US";
+    }
+  }, [i18n.language]);
+
   const totals = useMemo(() => {
     if (!rows.length) {
       return { amount: 0, minutes: 0 };
@@ -39,8 +55,8 @@ export function AdminReportsPage() {
   }, [rows]);
 
   const chartData = rows.map((row) => ({
-    name: row.project ?? "Desconhecido",
-    horas: Number((row.total_minutes / 60).toFixed(2))
+    name: row.project ?? t("admin.reports.chart.unknownProject"),
+    hours: Number((row.total_minutes / 60).toFixed(2))
   }));
 
   const handleExport = async (format: "csv" | "pdf") => {
@@ -68,10 +84,8 @@ export function AdminReportsPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-text">Relatórios</h1>
-          <p className="text-sm text-primary/70">
-            Resumos por projeto e utilizador com exportação segura.
-          </p>
+          <h1 className="text-2xl font-semibold text-text">{t("admin.reports.title")}</h1>
+          <p className="text-sm text-primary/70">{t("admin.reports.subtitle")}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => handleExport("csv")}>
@@ -82,30 +96,30 @@ export function AdminReportsPage() {
       </div>
 
       <Card className="flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-text">Filtro:</span>
+        <span className="text-sm font-medium text-text">{t("admin.reports.filters.label")}</span>
         <Button
           variant={billableFilter === "all" ? "default" : "subtle"}
           onClick={() => setBillableFilter("all")}
         >
-          Todos
+          {t("admin.reports.filters.all")}
         </Button>
         <Button
           variant={billableFilter === "billable" ? "default" : "subtle"}
           onClick={() => setBillableFilter("billable")}
         >
-          Billable
+          {t("admin.reports.filters.billable")}
         </Button>
         <Button
           variant={billableFilter === "non-billable" ? "default" : "subtle"}
           onClick={() => setBillableFilter("non-billable")}
         >
-          Non-billable
+          {t("admin.reports.filters.nonBillable")}
         </Button>
       </Card>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <p className="text-sm text-primary/70">Horas totais</p>
+          <p className="text-sm text-primary/70">{t("admin.reports.cards.totalHours")}</p>
           {isLoading ? (
             <p className="mt-2 text-2xl font-semibold text-text">—</p>
           ) : (
@@ -115,13 +129,13 @@ export function AdminReportsPage() {
           )}
         </Card>
         <Card>
-          <p className="text-sm text-primary/70">Projetos</p>
+          <p className="text-sm text-primary/70">{t("admin.reports.cards.projects")}</p>
           <p className="mt-2 text-2xl font-semibold text-text">{rows.length}</p>
         </Card>
         <Card>
-          <p className="text-sm text-primary/70">Valor faturado</p>
+          <p className="text-sm text-primary/70">{t("admin.reports.cards.billedAmount")}</p>
           <p className="mt-2 text-2xl font-semibold text-success">
-            {totals.amount.toLocaleString("pt-PT", { style: "currency", currency: "EUR" })}
+            {totals.amount.toLocaleString(locale, { style: "currency", currency: "EUR" })}
           </p>
         </Card>
       </div>
@@ -129,14 +143,14 @@ export function AdminReportsPage() {
       <Card>
         <div className="h-72">
           {isLoading ? (
-            <p>A carregar gráfico...</p>
+            <p>{t("admin.reports.chart.loading")}</p>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="horas" stroke="#1E88E5" strokeWidth={3} />
+                <Line type="monotone" dataKey="hours" stroke="#1E88E5" strokeWidth={3} />
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -147,18 +161,18 @@ export function AdminReportsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Projeto</TableHead>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Horas</TableHead>
-              <TableHead>Billable</TableHead>
-              <TableHead>Non-billable</TableHead>
-              <TableHead>Valor</TableHead>
+              <TableHead>{t("admin.reports.table.project")}</TableHead>
+              <TableHead>{t("admin.reports.table.client")}</TableHead>
+              <TableHead>{t("admin.reports.table.hours")}</TableHead>
+              <TableHead>{t("admin.reports.table.billable")}</TableHead>
+              <TableHead>{t("admin.reports.table.nonBillable")}</TableHead>
+              <TableHead>{t("admin.reports.table.amount")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6}>A carregar...</TableCell>
+                <TableCell colSpan={6}>{t("common.loading")}</TableCell>
               </TableRow>
             )}
             {!isLoading &&
@@ -170,7 +184,7 @@ export function AdminReportsPage() {
                   <TableCell>{(row.billable_minutes / 60).toFixed(1)}h</TableCell>
                   <TableCell>{(row.non_billable_minutes / 60).toFixed(1)}h</TableCell>
                   <TableCell>
-                    {Number(row.total_amount ?? 0).toLocaleString("pt-PT", {
+                    {Number(row.total_amount ?? 0).toLocaleString(locale, {
                       style: "currency",
                       currency: "EUR"
                     })}
@@ -179,7 +193,7 @@ export function AdminReportsPage() {
               ))}
             {!isLoading && rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6}>Sem dados para o filtro seleccionado.</TableCell>
+                <TableCell colSpan={6}>{t("admin.reports.table.empty")}</TableCell>
               </TableRow>
             )}
           </TableBody>

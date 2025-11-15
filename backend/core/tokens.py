@@ -20,12 +20,13 @@ def set_jwt_cookies(
     access_lifetime = settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"]
     refresh_lifetime = settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"]
     secure = settings.REST_COOKIE_SECURE
+    samesite = settings.REST_COOKIE_SAMESITE
     response.set_cookie(
         settings.JWT_COOKIE_ACCESS_KEY,
         access_token,
         httponly=True,
         secure=secure,
-        samesite="Lax",
+        samesite=samesite,
         path="/",
         max_age=_seconds(access_lifetime),
     )
@@ -34,7 +35,7 @@ def set_jwt_cookies(
         refresh_token,
         httponly=True,
         secure=secure,
-        samesite="Lax",
+        samesite=samesite,
         path="/api/auth/",
         max_age=_seconds(refresh_lifetime),
     )
@@ -43,7 +44,7 @@ def set_jwt_cookies(
         "csrftoken",
         csrf_token,
         secure=secure,
-        samesite="Lax",
+        samesite=samesite,
         path="/",
     )
 

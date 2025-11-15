@@ -13,12 +13,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
-    DJANGO_ALLOWED_HOSTS=(list[str], ["*"]),
+    DJANGO_ALLOWED_HOSTS=(list, ["*"]),
     DATABASE_URL=(str, f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
-    CORS_ALLOWED_ORIGINS=(list[str], ["http://localhost:5173"]),
-    CSRF_TRUSTED_ORIGINS=(list[str], ["http://localhost:5173"]),
+    CORS_ALLOWED_ORIGINS=(list, ["http://localhost:5173"]),
+    CSRF_TRUSTED_ORIGINS=(list, ["http://localhost:5173"]),
     JWT_COOKIE_SECURE=(bool, False),
     TIMEENTRY_ALLOW_OVERLAP=(bool, False),
+    SERVE_MEDIA_FILES=(bool, False),
 )
 
 ENV_PATH = BASE_DIR.parent / ".env"
@@ -117,8 +118,10 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 if DEBUG:
     STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+SERVE_MEDIA_FILES = env("SERVE_MEDIA_FILES", default=DEBUG)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -168,7 +171,7 @@ CSRF_COOKIE_SECURE = env("JWT_COOKIE_SECURE")
 JWT_COOKIE_ACCESS_KEY = "worktrace_access"
 JWT_COOKIE_REFRESH_KEY = "worktrace_refresh"
 
-REST_COOKIE_SAMESITE = "Lax"
+REST_COOKIE_SAMESITE = env("REST_COOKIE_SAMESITE", default="Lax")
 REST_COOKIE_SECURE = env("JWT_COOKIE_SECURE")
 
 SIMPLE_JWT = {
